@@ -13,7 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
-    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
 
     <style>
         :root {
@@ -35,10 +34,17 @@
 
         .sidebar { background: var(--bg-side); border-right: 1px solid var(--border); padding: 24px; }
         .notes-panel { background: var(--bg-side); border-left: 1px solid var(--border); padding: 24px; }
-        .main-content { padding: 40px; align-items: center; }
+        
+        .main-content { 
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; /* Align back to top */
+        }
 
-        /* Mobile Responsive Logic */
         @media (max-width: 900px) {
+            .app-container { display: block; }
             .sidebar, .main-content, .notes-panel { 
                 position: fixed; inset: 0; bottom: 80px; width: 100vw; 
                 background: var(--bg-app); z-index: 1; display: none; padding: 20px;
@@ -48,7 +54,6 @@
             .main-content { padding-top: 30px; }
         }
 
-        /* Large Mobile Nav Bar */
         .mobile-nav { 
             display: none; position: fixed; bottom: 0; width: 100%; height: 80px; 
             background: var(--bg-side); border-top: 1px solid var(--border); 
@@ -63,29 +68,39 @@
         .nav-icon { font-size: 26px; margin-bottom: 4px; }
         .nav-label { font-size: 11px; font-weight: 700; }
 
-        /* Buttons & UI */
         .logo { font-weight: 800; font-size: 24px; margin-bottom: 20px; color: var(--text-main); }
-        .upload-btn { background: var(--primary); color: white; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; text-align: center; display: block; margin-bottom: 20px; }
+        .upload-btn { background: var(--primary); color: white; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; text-align: center; display: block; margin-bottom: 20px; transition: opacity 0.2s; }
+        .upload-btn:hover { opacity: 0.9; }
         
         .file-list { flex-grow: 1; }
-        .file-item { padding: 15px; border-radius: 12px; margin-bottom: 10px; background: var(--bg-side); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .file-item { padding: 15px; border-radius: 12px; margin-bottom: 10px; background: var(--bg-side); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .file-item.active { border-color: var(--primary); background: rgba(79, 70, 229, 0.05); color: var(--primary); font-weight: bold; }
+        .empty-sidebar { text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 14px; line-height: 1.5; }
 
-        .player-card { width: 100%; max-width: 600px; background: var(--bg-side); padding: 25px; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        #waveform { margin: 20px 0; background: rgba(0,0,0,0.02); border-radius: 10px; min-height: 100px; }
+        #player-ui {
+            width: 100%;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .player-card { width: 100%; background: var(--bg-side); padding: 25px; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        #waveform { margin: 25px 0; background: rgba(0,0,0,0.02); border-radius: 12px; min-height: 100px; cursor: pointer; }
         
-        .controls { display: flex; align-items: center; gap: 20px; }
-        #btn-play { width: 55px; height: 55px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 22px; cursor: pointer; }
-        #timer { font-family: monospace; font-weight: bold; opacity: 0.7; }
+        .controls { display: flex; align-items: center; gap: 15px; }
+        #btn-play { width: 55px; height: 55px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        #timer { font-family: monospace; font-weight: bold; opacity: 0.7; margin-left: auto; }
 
-        .input-group { margin-top: 25px; display: flex; gap: 10px; width: 100%; max-width: 600px; }
-        input[type="text"] { flex-grow: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--border); font-size: 16px; background: var(--bg-side); color: var(--text-main); outline: none; }
-        .add-btn { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 14px; font-weight: 700; }
+        .input-group { margin-top: 25px; display: flex; gap: 10px; width: 100%; }
+        input[type="text"] { flex-grow: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--border); font-size: 16px; background: var(--bg-side); color: var(--text-main); outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        input[type="text"]:focus { border-color: var(--primary); }
+        .add-btn { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 
         .note-card { padding: 16px; border-radius: 14px; background: var(--bg-app); margin-bottom: 12px; border-left: 4px solid var(--primary); position: relative; text-align: left; }
         .note-time { color: var(--primary); font-family: monospace; font-weight: 800; cursor: pointer; margin-bottom: 5px; display: block; }
         
-        #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; z-index: 2000; align-items: center; justify-content: center; font-weight: bold; }
+        #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; z-index: 2000; align-items: center; justify-content: center; font-weight: bold; backdrop-filter: blur(4px); }
     </style>
 </head>
 <body>
@@ -105,14 +120,15 @@
 
         <!-- Tab 2: Player -->
         <main class="main-content" id="tab-player">
-            <div id="empty-state" style="text-align: center; margin-top: 100px;">
-                <div style="font-size: 50px; margin-bottom: 10px;">🎧</div>
-                <h2>No Audio Loaded</h2>
-                <p style="color: var(--text-muted)">Go to the Library tab to upload a file.</p>
+            <div id="empty-state" style="text-align: center; margin-top: 60px;">
+                <div style="font-size: 60px; margin-bottom: 15px;">🎧</div>
+                <h2 style="margin-bottom: 10px;">No Audio Loaded</h2>
+                <p style="color: var(--text-muted)">Select a file from your library or upload a new one.</p>
             </div>
-            <div id="player-ui" style="display: none; width: 100%;">
+            
+            <div id="player-ui" style="display: none;">
                 <div class="player-card">
-                    <div id="file-title" style="font-weight: 800; margin-bottom: 15px; font-size: 18px;">Filename.mp3</div>
+                    <div id="file-title" style="font-weight: 800; margin-bottom: 15px; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Filename.mp3</div>
                     <div class="controls">
                         <button id="btn-play">▶</button>
                         <span id="timer">00:00 / 00:00</span>
@@ -120,7 +136,7 @@
                     <div id="waveform"></div>
                 </div>
                 <div class="input-group">
-                    <input type="text" id="note-input" placeholder="Type a note...">
+                    <input type="text" id="note-input" placeholder="Type a note and press Enter...">
                     <button id="btn-add" class="add-btn">Add</button>
                 </div>
             </div>
@@ -130,7 +146,7 @@
         <aside class="notes-panel" id="tab-notes">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
                 <h3 style="margin:0">Notes</h3>
-                <button onclick="exportNotes()" style="font-size: 12px; background: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; color: var(--text-muted); font-weight: bold;">Export .TXT</button>
+                <button onclick="exportNotes()" style="font-size: 12px; background: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; color: var(--text-muted); font-weight: bold; cursor: pointer;">Export .TXT</button>
             </div>
             <div id="notes-display"></div>
         </aside>
@@ -156,6 +172,16 @@
         let db;
         let activeId = null;
         let currentUrl = null;
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            const partM = m.toString().padStart(2, '0');
+            const partS = s.toString().padStart(2, '0');
+            return h > 0 ? `${h}:${partM}:${partS}` : `${partM}:${partS}`;
+        }
 
         const wavesurfer = WaveSurfer.create({
             container: '#waveform',
@@ -188,16 +214,23 @@
         function loadLibrary() {
             const list = document.getElementById('file-list');
             list.innerHTML = '';
+            let hasFiles = false;
+
             const tx = db.transaction("files", "readonly").objectStore("files");
             tx.openCursor(null, 'prev').onsuccess = (e) => {
                 const cursor = e.target.result;
                 if (cursor) {
+                    hasFiles = true;
                     const div = document.createElement('div');
                     div.className = `file-item ${activeId === cursor.value.id ? 'active' : ''}`;
-                    div.innerHTML = `<span>${cursor.value.name}</span> <span onclick="delFile(event, ${cursor.value.id})" style="color:#ef4444; font-weight: bold; padding: 5px;">✕</span>`;
+                    div.innerHTML = `
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${cursor.value.name}</span> 
+                        <span onclick="delFile(event, ${cursor.value.id})" style="color:#ef4444; font-weight: bold; padding: 5px;">✕</span>`;
                     div.onclick = () => openFile(cursor.value.id);
                     list.appendChild(div);
                     cursor.continue();
+                } else if (!hasFiles) {
+                    list.innerHTML = `<div class="empty-sidebar">No audio files yet.<br>Click the button above to start.</div>`;
                 }
             };
         }
@@ -210,7 +243,7 @@
                 const f = e.target.result;
                 document.getElementById('file-title').innerText = f.name;
                 document.getElementById('empty-state').style.display = 'none';
-                document.getElementById('player-ui').style.display = 'block';
+                document.getElementById('player-ui').style.display = 'flex';
                 
                 switchTab('player');
 
@@ -242,18 +275,19 @@
         function renderNotes(notes) {
             const container = document.getElementById('notes-display');
             container.innerHTML = '';
-            notes.sort((a,b) => b.time - a.time).forEach(n => {
+            notes.sort((a,b) => a.time - b.time).forEach(n => {
                 const d = document.createElement('div');
                 d.className = 'note-card';
                 d.innerHTML = `
-                    <span style="color:#ef4444; position:absolute; top:12px; right:12px; cursor:pointer; font-weight:bold;" onclick="delNote(${n.id})">✕</span>
-                    <span class="note-time" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${new Date(n.time * 1000).toISOString().substr(14, 5)}</span>
-                    <div style="font-size:14px; line-height:1.4;">${n.text}</div>`;
+                    <span style="color:#ef4444; position:absolute; top:12px; right:12px; cursor:pointer; font-weight:bold; padding: 5px;" onclick="delNote(${n.id})">✕</span>
+                    <span class="note-time" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${formatTime(n.time)}</span>
+                    <div style="font-size:14px; line-height:1.4; padding-right: 20px;">${n.text}</div>`;
                 container.appendChild(d);
             });
+            container.scrollTop = container.scrollHeight;
         }
 
-        document.getElementById('btn-add').onclick = () => {
+        function addNote() {
             const input = document.getElementById('note-input');
             const text = input.value.trim();
             if (!text || !activeId) return;
@@ -268,7 +302,17 @@
                     renderNotes(f.notes);
                 };
             };
-        };
+        }
+
+        document.getElementById('btn-add').onclick = addNote;
+        document.getElementById('note-input').onkeydown = (e) => { if (e.key === 'Enter') addNote(); };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                wavesurfer.playPause();
+            }
+        });
 
         window.delNote = (noteId) => {
             const tx = db.transaction("files", "readwrite").objectStore("files");
@@ -281,15 +325,20 @@
 
         window.delFile = (e, id) => {
             e.stopPropagation();
-            if(confirm("Delete project?")) db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => location.reload();
+            if(confirm("Delete project?")) {
+                db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => {
+                    if (activeId === id) location.reload();
+                    else loadLibrary();
+                };
+            }
         };
 
         function exportNotes() {
             db.transaction("files", "readonly").objectStore("files").get(activeId).onsuccess = (e) => {
                 const f = e.target.result;
-                const text = f.notes.sort((a,b) => a.time - b.time).map(n => `[${new Date(n.time * 1000).toISOString().substr(14, 5)}] ${n.text}`).join('\n');
+                const text = f.notes.sort((a,b) => a.time - b.time).map(n => `[${formatTime(n.time)}] ${n.text}`).join('\n');
                 const blob = new Blob([text], { type: 'text/plain' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}.txt`; a.click();
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}_notes.txt`; a.click();
             };
         }
 
@@ -298,7 +347,7 @@
         wavesurfer.on('pause', () => document.getElementById('btn-play').innerText = '▶');
         wavesurfer.on('timeupdate', (t) => {
             const dur = wavesurfer.getDuration() || 0;
-            document.getElementById('timer').innerText = `${new Date(t * 1000).toISOString().substr(14, 5)} / ${new Date(dur * 1000).toISOString().substr(14, 5)}`;
+            document.getElementById('timer').innerText = `${formatTime(t)} / ${formatTime(dur)}`;
         });
     </script>
 </body>
