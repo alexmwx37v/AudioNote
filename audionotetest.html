@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AudioNote | Precision Annotator</title>
+    <title>AudioNote</title>
     
-    <!-- Typography -->
+    <!-- PWA Metadata for Sideloading -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
-    <!-- WaveSurfer.js -->
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
 
@@ -18,112 +21,111 @@
         :root {
             --primary: #4f46e5; --bg-app: #f1f5f9; --bg-side: #ffffff;
             --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0;
-            --glass: rgba(255, 255, 255, 0.85);
         }
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-app: #0f172a; --bg-side: #1e293b; --text-main: #f1f5f9;
-                --text-muted: #94a3b8; --border: #334155; --glass: rgba(30, 41, 59, 0.85);
+                --text-muted: #94a3b8; --border: #334155;
             }
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100vw; font-family: 'Inter', sans-serif; background: var(--bg-app); color: var(--text-main); overflow: hidden; }
 
-        /* Desktop Layout */
+        /* Base Layout (Desktop) */
         .app-container { display: grid; grid-template-columns: 300px 1fr 340px; height: 100vh; }
+        .sidebar, .main-content, .notes-panel { height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
 
-        /* Mobile Adjustments */
+        /* Sidebar & Panels */
+        .sidebar { background: var(--bg-side); border-right: 1px solid var(--border); padding: 24px; }
+        .notes-panel { background: var(--bg-side); border-left: 1px solid var(--border); padding: 24px; }
+        .main-content { padding: 40px; align-items: center; justify-content: flex-start; }
+
+        /* Mobile Logic - THE FIX IS HERE */
         @media (max-width: 900px) {
-            .app-container { display: block; height: calc(100vh - 70px); }
-            .sidebar, .main-content, .notes-panel { display: none; width: 100% !important; height: 100% !important; border: none !important; padding: 20px !important; overflow-y: auto; }
-            .sidebar.active, .main-content.active, .notes-panel.active { display: flex; flex-direction: column; }
+            .app-container { display: block; height: 100vh; }
+            
+            /* Hide by default without using !important on the display property */
+            .sidebar, .main-content, .notes-panel { 
+                position: fixed;
+                inset: 0;
+                bottom: 70px; /* Space for nav */
+                width: 100vw;
+                background: var(--bg-app);
+                z-index: 1;
+                display: none; 
+                padding: 20px;
+            }
+
+            /* Show when active */
+            .sidebar.active, .main-content.active, .notes-panel.active { 
+                display: flex !important; 
+            }
+
             .mobile-nav { display: flex !important; }
+            .main-content { padding-top: 40px; }
         }
 
         /* UI Elements */
-        .sidebar { background: var(--bg-side); border-right: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-        .logo { font-weight: 800; font-size: 24px; letter-spacing: -1px; color: var(--text-main); }
+        .logo { font-weight: 800; font-size: 24px; margin-bottom: 20px; color: var(--primary); }
+        .upload-btn { background: var(--primary); color: white; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; text-align: center; display: block; margin-bottom: 20px; }
         
-        .upload-btn {
-            background: var(--primary); color: white; padding: 16px; border-radius: 14px;
-            font-weight: 700; cursor: pointer; text-align: center; border: none; display: block;
-            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
-        }
+        .file-list { flex-grow: 1; }
+        .file-item { padding: 14px; border-radius: 12px; margin-bottom: 10px; background: var(--bg-side); border: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 14px; }
+        .file-item.active { border-color: var(--primary); background: rgba(79, 70, 229, 0.1); }
 
-        .file-list { flex-grow: 1; overflow-y: auto; }
-        .file-item { padding: 14px; border-radius: 12px; margin-bottom: 10px; cursor: pointer; background: var(--bg-app); display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
-        .file-item.active { border: 2px solid var(--primary); background: rgba(79, 70, 229, 0.08); color: var(--primary); }
-
-        .main-content { padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .player-card { width: 100%; max-width: 800px; background: var(--bg-side); padding: 30px; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.05); backdrop-filter: blur(10px); background: var(--glass); }
-        #waveform { margin: 25px 0; min-height: 120px; cursor: pointer; }
+        .player-card { width: 100%; max-width: 600px; background: var(--bg-side); padding: 20px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        #waveform { margin: 20px 0; background: rgba(0,0,0,0.02); border-radius: 8px; }
         
-        .controls { display: flex; align-items: center; gap: 20px; }
-        #btn-play { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #timer { font-family: monospace; font-weight: 700; opacity: 0.8; font-size: 16px; }
+        .controls { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        #btn-play { width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 20px; }
+        
+        .input-group { margin-top: 20px; display: flex; gap: 8px; width: 100%; max-width: 600px; }
+        input[type="text"] { flex-grow: 1; padding: 15px; border-radius: 12px; border: 1px solid var(--border); font-size: 16px; background: var(--bg-side); color: var(--text-main); }
+        .add-btn { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 12px; font-weight: 600; }
 
-        .input-group { margin-top: 30px; display: flex; gap: 10px; width: 100%; max-width: 800px; background: var(--bg-side); padding: 10px; border-radius: 18px; border: 1px solid var(--border); }
-        input[type="text"] { flex-grow: 1; border: none; background: transparent; padding: 12px; font-size: 16px; outline: none; color: var(--text-main); }
-        .add-btn { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .note-card { padding: 15px; border-radius: 12px; background: var(--bg-app); margin-bottom: 10px; border-left: 4px solid var(--primary); position: relative; }
 
-        .notes-panel { background: var(--bg-side); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; }
-        .note-card { padding: 16px; border-radius: 12px; background: var(--bg-app); margin-bottom: 12px; position: relative; border-left: 4px solid var(--primary); text-align: left; }
-        .note-time { color: var(--primary); font-family: monospace; font-weight: 800; font-size: 14px; cursor: pointer; text-decoration: underline; }
-
-        /* Mobile Navigation Bar */
+        /* Mobile Nav */
         .mobile-nav { display: none; position: fixed; bottom: 0; width: 100%; height: 70px; background: var(--bg-side); border-top: 1px solid var(--border); justify-content: space-around; align-items: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--text-muted); font-weight: bold; }
         .nav-item.active { color: var(--primary); }
-        .nav-icon { font-size: 22px; margin-bottom: 4px; }
-
-        /* Loading Screen */
-        #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); color: white; z-index: 2000; align-items: center; justify-content: center; flex-direction: column; font-weight: bold; }
+        
+        #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); color: white; z-index: 2000; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <div id="loader">Processing Audio...</div>
+    <div id="loader">Loading Audio...</div>
 
     <div class="app-container">
-        <!-- Sidebar (Library) -->
+        <!-- Sidebar -->
         <aside class="sidebar active" id="tab-library">
             <div class="logo">AudioNote</div>
-            
             <label class="upload-btn">
                 + Upload Audio
-                <!-- Accepts various audio formats for mobile compatibility -->
-                <input type="file" id="audio-upload" accept="audio/*, .mp3, .m4a, .wav, .aac" style="display: none;">
+                <input type="file" id="audio-upload" accept="audio/*" style="display: none;">
             </label>
-
             <div class="file-list" id="file-list"></div>
-            
-            <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: auto;">
-                Files are stored locally on your device.
-            </div>
         </aside>
 
-        <!-- Main Content (Player) -->
+        <!-- Main Player -->
         <main class="main-content" id="tab-player">
             <div id="empty-state">
-                <div style="font-size:64px; margin-bottom: 20px;">🎵</div>
-                <h2 style="margin:0">No Audio Selected</h2>
-                <p style="color: var(--text-muted)">Upload a song from your phone to start.</p>
+                <h2>No Audio Loaded</h2>
+                <p>Upload a file from the library tab.</p>
             </div>
-
             <div id="player-ui" style="display: none; width: 100%;">
-                <h2 id="file-title" style="margin-top: 0; margin-bottom: 25px; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Song Title</h2>
-                
                 <div class="player-card">
+                    <div id="file-title" style="font-weight: bold; margin-bottom: 15px;">Filename.mp3</div>
                     <div class="controls">
                         <button id="btn-play">▶</button>
-                        <span id="timer">00:00 / 00:00</span>
+                        <span id="timer" style="font-family: monospace;">00:00 / 00:00</span>
                     </div>
                     <div id="waveform"></div>
                 </div>
-
                 <div class="input-group">
-                    <input type="text" id="note-input" placeholder="Add a note at this time...">
+                    <input type="text" id="note-input" placeholder="Type a note...">
                     <button id="btn-add" class="add-btn">Add</button>
                 </div>
             </div>
@@ -131,62 +133,52 @@
 
         <!-- Notes Panel -->
         <aside class="notes-panel" id="tab-notes">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                 <h3 style="margin:0">Notes</h3>
-                <button onclick="exportNotes()" style="background:none; border:1px solid var(--border); padding:5px 10px; border-radius:8px; font-size:12px; cursor:pointer; color:var(--text-muted);">Export .TXT</button>
+                <button onclick="exportNotes()" style="font-size: 12px;">Export</button>
             </div>
-            <div id="notes-display" style="overflow-y: auto; flex-grow: 1;"></div>
+            <div id="notes-display"></div>
         </aside>
     </div>
 
-    <!-- Mobile Nav -->
     <nav class="mobile-nav">
-        <div class="nav-item active" onclick="switchTab('library')">
-            <span class="nav-icon">📁</span><span>Library</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('player')">
-            <span class="nav-icon">🎧</span><span>Player</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('notes')">
-            <span class="nav-icon">📝</span><span>Notes</span>
-        </div>
+        <div class="nav-item active" onclick="switchTab('library')"><span>📁</span><span>Library</span></div>
+        <div class="nav-item" onclick="switchTab('player')"><span>🎧</span><span>Player</span></div>
+        <div class="nav-item" onclick="switchTab('notes')"><span>📝</span><span>Notes</span></div>
     </nav>
 
     <script>
         let db;
         let activeId = null;
-        let currentBlobUrl = null;
+        let currentUrl = null;
 
-        // Initialize WaveSurfer
         const wavesurfer = WaveSurfer.create({
             container: '#waveform',
             waveColor: '#cbd5e1',
             progressColor: '#4f46e5',
-            height: 120,
-            barWidth: 3,
-            barGap: 3,
-            normalize: true,
-            responsive: true
+            height: 100,
+            barWidth: 2,
+            normalize: true
         });
-        const wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-
-        // Database
-        const req = indexedDB.open("AudioNoteDB_V6", 1);
-        req.onupgradeneeded = (e) => e.target.result.createObjectStore("files", { keyPath: "id", autoIncrement: true });
-        req.onsuccess = (e) => { db = e.target.result; loadLibrary(); };
 
         function switchTab(tabName) {
+            console.log("Switching to tab:", tabName);
             document.querySelectorAll('.sidebar, .main-content, .notes-panel').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tabName).classList.add('active');
+            
             document.querySelectorAll('.nav-item').forEach((el, idx) => {
                 const map = {library: 0, player: 1, notes: 2};
                 el.classList.toggle('active', idx === map[tabName]);
             });
-            // Re-render waveform if switching to player
+
             if (tabName === 'player' && activeId) {
                 setTimeout(() => wavesurfer.zoom(0), 100);
             }
         }
+
+        const req = indexedDB.open("AudioNote_Final_V7", 1);
+        req.onupgradeneeded = (e) => e.target.result.createObjectStore("files", { keyPath: "id", autoIncrement: true });
+        req.onsuccess = (e) => { db = e.target.result; loadLibrary(); };
 
         function loadLibrary() {
             const list = document.getElementById('file-list');
@@ -197,7 +189,7 @@
                 if (cursor) {
                     const div = document.createElement('div');
                     div.className = `file-item ${activeId === cursor.value.id ? 'active' : ''}`;
-                    div.innerHTML = `<span>${cursor.value.name}</span> <span onclick="delFile(event, ${cursor.value.id})" style="color:#ef4444; font-weight:bold; padding:5px;">✕</span>`;
+                    div.innerHTML = `<span>${cursor.value.name}</span> <span onclick="delFile(event, ${cursor.value.id})" style="color:red;">✕</span>`;
                     div.onclick = () => openFile(cursor.value.id);
                     list.appendChild(div);
                     cursor.continue();
@@ -212,23 +204,20 @@
             db.transaction("files", "readonly").objectStore("files").get(id).onsuccess = async (e) => {
                 const f = e.target.result;
                 document.getElementById('file-title').innerText = f.name;
-                
-                // Switch UI
                 document.getElementById('empty-state').style.display = 'none';
                 document.getElementById('player-ui').style.display = 'block';
+                
+                // Switch to player tab so WaveSurfer can see the container size
                 switchTab('player');
 
-                // Cleanup memory
-                if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-                currentBlobUrl = URL.createObjectURL(f.data);
+                if (currentUrl) URL.revokeObjectURL(currentUrl);
+                currentUrl = URL.createObjectURL(f.data);
 
                 try {
-                    await wavesurfer.load(currentBlobUrl);
-                    wsRegions.clearRegions();
+                    await wavesurfer.load(currentUrl);
                     renderNotes(f.notes);
-                    f.notes.forEach(n => wsRegions.addRegion({ start: n.time, end: n.time + 0.1, color: 'rgba(79, 70, 229, 0.2)' }));
                 } catch (err) {
-                    alert("Could not load this file. It might be too large for your phone's memory.");
+                    alert("Error loading audio.");
                 } finally {
                     document.getElementById('loader').style.display = 'none';
                     loadLibrary();
@@ -239,8 +228,6 @@
         document.getElementById('audio-upload').onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            document.getElementById('loader').style.display = 'flex';
             const tx = db.transaction("files", "readwrite");
             tx.objectStore("files").add({ name: file.name, data: file, notes: [] }).onsuccess = (ev) => {
                 loadLibrary();
@@ -248,7 +235,21 @@
             };
         };
 
-        const handleAddNote = () => {
+        function renderNotes(notes) {
+            const container = document.getElementById('notes-display');
+            container.innerHTML = '';
+            notes.sort((a,b) => b.time - a.time).forEach(n => {
+                const d = document.createElement('div');
+                d.className = 'note-card';
+                d.innerHTML = `
+                    <span style="color:red; position:absolute; top:10px; right:10px; cursor:pointer;" onclick="delNote(${n.id})">✕</span>
+                    <span class="note-time" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${new Date(n.time * 1000).toISOString().substr(14, 5)}</span>
+                    <div style="margin-top:5px;">${n.text}</div>`;
+                container.appendChild(d);
+            });
+        }
+
+        document.getElementById('btn-add').onclick = () => {
             const input = document.getElementById('note-input');
             const text = input.value.trim();
             if (!text || !activeId) return;
@@ -261,24 +262,9 @@
                 store.put(f).onsuccess = () => {
                     input.value = '';
                     renderNotes(f.notes);
-                    wsRegions.addRegion({ start: time, end: time + 0.1, color: 'rgba(79, 70, 229, 0.2)' });
                 };
             };
         };
-
-        function renderNotes(notes) {
-            const container = document.getElementById('notes-display');
-            container.innerHTML = '';
-            notes.sort((a,b) => b.time - a.time).forEach(n => {
-                const d = document.createElement('div');
-                d.className = 'note-card';
-                d.innerHTML = `
-                    <span style="color:#ef4444; position:absolute; top:12px; right:12px; cursor:pointer; font-weight:bold; padding:5px;" onclick="delNote(${n.id})">✕</span>
-                    <span class="note-time" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${new Date(n.time * 1000).toISOString().substr(14, 5)}</span>
-                    <div style="margin-top:8px; font-size:14px;">${n.text}</div>`;
-                container.appendChild(d);
-            });
-        }
 
         window.delNote = (noteId) => {
             const tx = db.transaction("files", "readwrite").objectStore("files");
@@ -291,7 +277,7 @@
 
         window.delFile = (e, id) => {
             e.stopPropagation();
-            if(confirm("Delete this project?")) db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => location.reload();
+            if(confirm("Delete project?")) db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => location.reload();
         };
 
         function exportNotes() {
@@ -299,15 +285,11 @@
                 const f = e.target.result;
                 const text = f.notes.sort((a,b) => a.time - b.time).map(n => `[${new Date(n.time * 1000).toISOString().substr(14, 5)}] ${n.text}`).join('\n');
                 const blob = new Blob([text], { type: 'text/plain' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}_notes.txt`; a.click();
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}.txt`; a.click();
             };
         }
 
-        document.getElementById('btn-add').onclick = handleAddNote;
-        document.getElementById('note-input').onkeydown = (e) => { if(e.key === 'Enter') handleAddNote(); };
         document.getElementById('btn-play').onclick = () => wavesurfer.playPause();
-        wavesurfer.on('play', () => document.getElementById('btn-play').innerText = '⏸');
-        wavesurfer.on('pause', () => document.getElementById('btn-play').innerText = '▶');
         wavesurfer.on('timeupdate', (t) => {
             const dur = wavesurfer.getDuration() || 0;
             document.getElementById('timer').innerText = `${new Date(t * 1000).toISOString().substr(14, 5)} / ${new Date(dur * 1000).toISOString().substr(14, 5)}`;
