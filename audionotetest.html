@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AudioNote | Precision Transcription</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #4f46e5; 
+            --bg-app: #f1f5f9;
+            --bg-side: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --glass: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-app: #0f172a; --bg-side: #1e293b; --text-main: #f1f5f9;
+                --text-muted: #94a3b8; --border: #334155; --glass: rgba(30, 41, 59, 0.8);
+            }
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100vw; 
+            font-family: 'Inter', sans-serif; background: var(--bg-app); 
+            color: var(--text-main); overflow: hidden;
+        }
+
+        /* Desktop Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 340px;
+            height: 100vh;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 850px) {
+            .app-container {
+                display: block; /* Stack everything */
+                height: calc(100vh - 65px); /* Leave room for bottom nav */
+                overflow-y: auto;
+            }
+            .sidebar, .main-content, .notes-panel {
+                display: none; /* Hide all by default */
+                width: 100% !important;
+                height: 100% !important;
+                border: none !important;
+                padding: 20px !important;
+            }
+            .sidebar.active, .main-content.active, .notes-panel.active {
+                display: flex; /* Show only active tab */
+            }
+            .mobile-nav {
+                display: flex !important;
+            }
+        }
+
+        /* Bottom Nav Bar (Mobile Only) */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; width: 100%; height: 65px;
+            background: var(--bg-side);
+            border-top: 1px solid var(--border);
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+            text-decoration: none; cursor: pointer;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 20px; margin-bottom: 4px; }
+
+        /* Shared Components */
+        .sidebar { background: var(--bg-side); border-right: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+        .logo { font-weight: 800; font-size: 22px; color: var(--text-main); }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 600; cursor: pointer; text-align: center; }
+        
+        .file-list { flex-grow: 1; overflow-y: auto; }
+        .file-item { padding: 14px; border-radius: 10px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; background: var(--bg-app); }
+        .file-item.active { background: rgba(79, 70, 229, 0.1); border-color: var(--primary); color: var(--primary); }
+
+        .main-content { padding: 40px; display: flex; flex-direction: column; position: relative; }
+        .player-card { background: var(--bg-side); padding: 24px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); backdrop-filter: blur(10px); background: var(--glass); }
+        
+        #waveform { margin: 20px 0; border-radius: 8px; overflow: hidden; }
+        .controls { display: flex; align-items: center; gap: 15px; }
+        #btn-play { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 24px; cursor: pointer; }
+        
+        .input-group { margin-top: 20px; display: flex; gap: 10px; padding: 10px; background: var(--bg-side); border-radius: 16px; border: 1px solid var(--border); }
+        input[type="text"] { flex-grow: 1; border: none; background: transparent; padding: 10px; font-family: inherit; font-size: 16px; outline: none; color: var(--text-main); }
+
+        .notes-panel { background: var(--bg-side); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; }
+        .note-card { padding: 16px; border-radius: 12px; background: var(--bg-app); margin-bottom: 12px; position: relative; border-left: 4px solid var(--primary); }
+        
+        #empty-state { text-align: center; margin-top: 100px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Tab 1: Library -->
+        <aside class="sidebar active" id="tab-library">
+            <div class="logo">AudioNote</div>
+            <label class="btn-primary">
+                + New Project
+                <input type="file" id="audio-upload" accept="audio/*" style="display: none;">
+            </label>
+            <div class="file-list" id="file-list"></div>
+        </aside>
+
+        <!-- Tab 2: Player -->
+        <main class="main-content" id="tab-player">
+            <div id="empty-state">
+                <div style="font-size: 50px;">☁️</div>
+                <h2>No audio loaded</h2>
+                <p>Go to Library to start</p>
+            </div>
+
+            <div id="player-ui" style="display: none; width: 100%;">
+                <h1 id="file-title" style="margin: 0 0 20px 0; font-size: 20px;">Project</h1>
+                <div class="player-card">
+                    <div class="controls">
+                        <button id="btn-play">▶</button>
+                        <span id="timer" style="font-family: monospace; font-weight: bold; opacity: 0.7;">00:00 / 00:00</span>
+                    </div>
+                    <div id="waveform"></div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="note-input" placeholder="Type a note...">
+                    <button id="btn-add" class="btn-primary" style="padding: 0 15px;">Add</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab 3: Notes -->
+        <aside class="notes-panel" id="tab-notes">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin:0">Annotations</h3>
+                <button onclick="exportNotes()" style="font-size: 12px; padding: 5px 10px;">Export .TXT</button>
+            </div>
+            <div id="notes-display" style="overflow-y: auto; flex-grow: 1;"></div>
+        </aside>
+    </div>
+
+    <!-- Bottom Nav Bar -->
+    <nav class="mobile-nav">
+        <div class="nav-item active" onclick="switchTab('library')">
+            <span class="nav-icon">📁</span>
+            <span>Library</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('player')">
+            <span class="nav-icon">🎧</span>
+            <span>Player</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('notes')">
+            <span class="nav-icon">📝</span>
+            <span>Notes</span>
+        </div>
+    </nav>
+
+    <script>
+        let db;
+        let activeId = null;
+
+        // Mobile Tab Switching Logic
+        function switchTab(tabName) {
+            // Update active states for views
+            document.querySelectorAll('.sidebar, .main-content, .notes-panel').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Update active states for nav icons
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const index = tabName === 'library' ? 0 : tabName === 'player' ? 1 : 2;
+            document.querySelectorAll('.nav-item')[index].classList.add('active');
+        }
+
+        const wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: '#cbd5e1',
+            progressColor: '#4f46e5',
+            height: 100,
+            barWidth: 3,
+            normalize: true
+        });
+        const wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
+
+        const req = indexedDB.open("AudioNoteDB_v3", 1);
+        req.onupgradeneeded = (e) => {
+            const d = e.target.result;
+            d.createObjectStore("files", { keyPath: "id", autoIncrement: true });
+        };
+        req.onsuccess = (e) => { db = e.target.result; loadLibrary(); };
+
+        function loadLibrary() {
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+            const tx = db.transaction("files", "readonly").objectStore("files");
+            tx.openCursor(null, 'prev').onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const div = document.createElement('div');
+                    div.className = `file-item ${activeId === cursor.value.id ? 'active' : ''}`;
+                    div.innerHTML = `<span>${cursor.value.name}</span> <span onclick="delFile(event, ${cursor.value.id})" style="color:#ef4444;">✕</span>`;
+                    div.onclick = () => openFile(cursor.value.id);
+                    list.appendChild(div);
+                    cursor.continue();
+                }
+            };
+        }
+
+        function openFile(id) {
+            activeId = id;
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('player-ui').style.display = 'block';
+            
+            db.transaction("files", "readonly").objectStore("files").get(id).onsuccess = (e) => {
+                const f = e.target.result;
+                document.getElementById('file-title').innerText = f.name;
+                wavesurfer.load(URL.createObjectURL(f.data));
+                wsRegions.clearRegions();
+                renderNotes(f.notes);
+                f.notes.forEach(n => wsRegions.addRegion({ start: n.time, end: n.time + 0.1, color: 'rgba(79, 70, 229, 0.2)' }));
+                
+                // On mobile, auto-switch to player tab
+                if(window.innerWidth < 850) switchTab('player');
+                loadLibrary();
+            };
+        }
+
+        const handleAddNote = () => {
+            const input = document.getElementById('note-input');
+            const text = input.value.trim();
+            if (!text || !activeId) return;
+
+            const time = wavesurfer.getCurrentTime();
+            const tx = db.transaction("files", "readwrite");
+            const store = tx.objectStore("files");
+            
+            store.get(activeId).onsuccess = (e) => {
+                const f = e.target.result;
+                f.notes.push({ id: Date.now(), time, text });
+                store.put(f).onsuccess = () => {
+                    input.value = '';
+                    wsRegions.addRegion({ start: time, end: time + 0.1, color: 'rgba(79, 70, 229, 0.2)' });
+                    renderNotes(f.notes);
+                };
+            };
+        };
+
+        function renderNotes(notes) {
+            const container = document.getElementById('notes-display');
+            container.innerHTML = '';
+            notes.sort((a,b) => b.time - a.time).forEach(n => {
+                const d = document.createElement('div');
+                d.className = 'note-card';
+                d.innerHTML = `
+                    <span style="color:#ef4444; position:absolute; top:10px; right:10px; cursor:pointer;" onclick="delNote(${n.id})">✕</span>
+                    <span style="color:var(--primary); font-family:monospace; font-weight:bold; cursor:pointer;" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${new Date(n.time * 1000).toISOString().substr(14, 5)}</span>
+                    <div style="margin-top:5px; font-size:14px;">${n.text}</div>
+                `;
+                container.appendChild(d);
+            });
+        }
+
+        // Standard Functions
+        document.getElementById('audio-upload').onchange = (e) => {
+            const file = e.target.files[0];
+            const tx = db.transaction("files", "readwrite");
+            tx.objectStore("files").add({ name: file.name, data: file, notes: [] }).onsuccess = (ev) => {
+                loadLibrary(); openFile(ev.target.result);
+            };
+        };
+
+        window.delNote = (noteId) => {
+            const tx = db.transaction("files", "readwrite");
+            const store = tx.objectStore("files");
+            store.get(activeId).onsuccess = (e) => {
+                const f = e.target.result;
+                f.notes = f.notes.filter(n => n.id !== noteId);
+                store.put(f).onsuccess = () => renderNotes(f.notes);
+            };
+        };
+
+        window.delFile = (e, id) => {
+            e.stopPropagation();
+            if(!confirm("Delete?")) return;
+            db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => location.reload();
+        };
+
+        function exportNotes() {
+            db.transaction("files", "readonly").objectStore("files").get(activeId).onsuccess = (e) => {
+                const f = e.target.result;
+                const text = f.notes.sort((a,b) => a.time - b.time).map(n => `[${new Date(n.time * 1000).toISOString().substr(14, 5)}] ${n.text}`).join('\n');
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}.txt`; a.click();
+            };
+        }
+
+        document.getElementById('btn-add').onclick = handleAddNote;
+        document.getElementById('note-input').onkeydown = (e) => { if(e.key === 'Enter') handleAddNote(); };
+        document.getElementById('btn-play').onclick = () => wavesurfer.playPause();
+        wavesurfer.on('play', () =
