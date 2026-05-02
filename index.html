@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
 
     <style>
         :root {
@@ -34,81 +35,49 @@
 
         .sidebar { background: var(--bg-side); border-right: 1px solid var(--border); padding: 24px; }
         .notes-panel { background: var(--bg-side); border-left: 1px solid var(--border); padding: 24px; }
-        
-        .main-content { 
-            padding: 40px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-start; /* Align back to top */
-        }
+        .main-content { padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
 
         @media (max-width: 900px) {
             .app-container { display: block; }
-            .sidebar, .main-content, .notes-panel { 
-                position: fixed; inset: 0; bottom: 80px; width: 100vw; 
-                background: var(--bg-app); z-index: 1; display: none; padding: 20px;
-            }
+            .sidebar, .main-content, .notes-panel { position: fixed; inset: 0; bottom: 80px; width: 100vw; background: var(--bg-app); z-index: 1; display: none; padding: 20px; }
             .sidebar.active, .main-content.active, .notes-panel.active { display: flex !important; }
             .mobile-nav { display: flex !important; }
-            .main-content { padding-top: 30px; }
         }
 
-        .mobile-nav { 
-            display: none; position: fixed; bottom: 0; width: 100%; height: 80px; 
-            background: var(--bg-side); border-top: 1px solid var(--border); 
-            justify-content: space-around; align-items: center; z-index: 1000; 
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        .nav-item { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            flex: 1; height: 100%; color: var(--text-muted); cursor: pointer;
-        }
+        .mobile-nav { display: none; position: fixed; bottom: 0; width: 100%; height: 80px; background: var(--bg-side); border-top: 1px solid var(--border); justify-content: space-around; align-items: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; height: 100%; color: var(--text-muted); cursor: pointer; }
         .nav-item.active { color: var(--primary); }
-        .nav-icon { font-size: 26px; margin-bottom: 4px; }
-        .nav-label { font-size: 11px; font-weight: 700; }
 
-        .logo { font-weight: 800; font-size: 24px; margin-bottom: 20px; color: var(--text-main); }
-        .upload-btn { background: var(--primary); color: white; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; text-align: center; display: block; margin-bottom: 20px; transition: opacity 0.2s; }
-        .upload-btn:hover { opacity: 0.9; }
+        .logo { font-weight: 800; font-size: 24px; margin-bottom: 20px; }
+        .upload-btn { background: var(--primary); color: white; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; text-align: center; display: block; margin-bottom: 20px; }
         
-        .file-list { flex-grow: 1; }
-        .file-item { padding: 15px; border-radius: 12px; margin-bottom: 10px; background: var(--bg-side); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .file-item.active { border-color: var(--primary); background: rgba(79, 70, 229, 0.05); color: var(--primary); font-weight: bold; }
-        .empty-sidebar { text-align: center; color: var(--text-muted); margin-top: 40px; font-size: 14px; line-height: 1.5; }
+        .file-item { padding: 15px; border-radius: 12px; margin-bottom: 10px; background: var(--bg-side); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+        .file-item:hover { border-color: var(--primary); }
+        .file-item.active { border-color: var(--primary); background: rgba(79, 70, 229, 0.1); color: var(--primary); font-weight: bold; }
 
-        #player-ui {
-            width: 100%;
-            max-width: 650px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .player-card { width: 100%; background: var(--bg-side); padding: 25px; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        #waveform { margin: 25px 0; background: rgba(0,0,0,0.02); border-radius: 12px; min-height: 100px; cursor: pointer; }
+        .player-card { width: 100%; max-width: 650px; background: var(--bg-side); padding: 25px; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        #waveform { margin: 25px 0; background: rgba(0,0,0,0.02); border-radius: 12px; min-height: 100px; position: relative; }
         
         .controls { display: flex; align-items: center; gap: 15px; }
-        #btn-play { width: 55px; height: 55px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #timer { font-family: monospace; font-weight: bold; opacity: 0.7; margin-left: auto; }
+        #btn-play { width: 55px; height: 55px; border-radius: 50%; background: var(--primary); color: white; border: none; font-size: 22px; cursor: pointer; flex-shrink: 0; }
+        #volume-slider { accent-color: var(--primary); width: 100px; cursor: pointer; }
 
-        .input-group { margin-top: 25px; display: flex; gap: 10px; width: 100%; }
-        input[type="text"] { flex-grow: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--border); font-size: 16px; background: var(--bg-side); color: var(--text-main); outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        input[type="text"]:focus { border-color: var(--primary); }
+        .input-group { margin-top: 25px; display: flex; gap: 10px; width: 100%; max-width: 650px; }
+        input[type="text"] { flex-grow: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-side); color: var(--text-main); outline: none; font-size: 16px; }
         .add-btn { background: var(--primary); color: white; border: none; padding: 0 25px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 
-        .note-card { padding: 16px; border-radius: 14px; background: var(--bg-app); margin-bottom: 12px; border-left: 4px solid var(--primary); position: relative; text-align: left; }
-        .note-time { color: var(--primary); font-family: monospace; font-weight: 800; cursor: pointer; margin-bottom: 5px; display: block; }
+        .note-card { padding: 16px; border-radius: 14px; background: var(--bg-app); margin-bottom: 12px; border-left: 5px solid var(--primary); position: relative; text-align: left; }
+        .note-time { font-family: monospace; font-weight: 800; cursor: pointer; margin-bottom: 5px; display: block; font-size: 14px; }
         
         #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; z-index: 2000; align-items: center; justify-content: center; font-weight: bold; backdrop-filter: blur(4px); }
+        .wavesurfer-region { width: 3px !important; border-radius: 2px; opacity: 1 !important; z-index: 10; }
     </style>
 </head>
 <body>
 
-    <div id="loader">Processing Audio...</div>
+    <div id="loader">Syncing...</div>
 
     <div class="app-container">
-        <!-- Tab 1: Library -->
         <aside class="sidebar active" id="tab-library">
             <div class="logo">AudioNote</div>
             <label class="upload-btn">
@@ -118,20 +87,23 @@
             <div class="file-list" id="file-list"></div>
         </aside>
 
-        <!-- Tab 2: Player -->
         <main class="main-content" id="tab-player">
             <div id="empty-state" style="text-align: center; margin-top: 60px;">
-                <div style="font-size: 60px; margin-bottom: 15px;">🎧</div>
-                <h2 style="margin-bottom: 10px;">No Audio Loaded</h2>
-                <p style="color: var(--text-muted)">Select a file from your library or upload a new one.</p>
+                <div style="font-size: 60px;">🎧</div>
+                <h2 style="margin-top: 10px;">No Audio Loaded</h2>
+                <p style="color: var(--text-muted)">Select a project or upload a file.</p>
             </div>
             
-            <div id="player-ui" style="display: none;">
+            <div id="player-ui" style="display: none; width: 100%; flex-direction: column; align-items: center;">
                 <div class="player-card">
-                    <div id="file-title" style="font-weight: 800; margin-bottom: 15px; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Filename.mp3</div>
+                    <div id="file-title" style="font-weight: 800; font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</div>
                     <div class="controls">
                         <button id="btn-play">▶</button>
-                        <span id="timer">00:00 / 00:00</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>🔊</span>
+                            <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+                        </div>
+                        <span id="timer" style="margin-left: auto; font-family: monospace; font-weight: bold; opacity: 0.7;">00:00 / 00:00</span>
                     </div>
                     <div id="waveform"></div>
                 </div>
@@ -142,45 +114,31 @@
             </div>
         </main>
 
-        <!-- Tab 3: Notes -->
         <aside class="notes-panel" id="tab-notes">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h3 style="margin:0">Notes</h3>
-                <button onclick="exportNotes()" style="font-size: 12px; background: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; color: var(--text-muted); font-weight: bold; cursor: pointer;">Export .TXT</button>
-            </div>
+            <h3 style="margin-bottom: 20px;">Notes</h3>
             <div id="notes-display"></div>
         </aside>
     </div>
 
-    <!-- Bottom Nav Bar -->
     <nav class="mobile-nav">
-        <div class="nav-item active" onclick="switchTab('library')">
-            <span class="nav-icon">📁</span>
-            <span class="nav-label">Library</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('player')">
-            <span class="nav-icon">🎧</span>
-            <span class="nav-label">Player</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('notes')">
-            <span class="nav-icon">📝</span>
-            <span class="nav-label">Notes</span>
-        </div>
+        <div class="nav-item active" onclick="switchTab('library')">📁</div>
+        <div class="nav-item" onclick="switchTab('player')">🎧</div>
+        <div class="nav-item" onclick="switchTab('notes')">📝</div>
     </nav>
 
     <script>
         let db;
         let activeId = null;
         let currentUrl = null;
+        let isUploading = false; // Prevents duplicate triggers
+        const colorPalette = ['#f43f5e', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#ec4899', '#3b82f6'];
 
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return "00:00";
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            const partM = m.toString().padStart(2, '0');
-            const partS = s.toString().padStart(2, '0');
-            return h > 0 ? `${h}:${partM}:${partS}` : `${partM}:${partS}`;
+        function formatTime(s) {
+            if (isNaN(s)) return "00:00";
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = Math.floor(s % 60);
+            return h > 0 ? `${h}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}` : `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
         }
 
         const wavesurfer = WaveSurfer.create({
@@ -189,100 +147,114 @@
             progressColor: '#4f46e5',
             height: 100,
             barWidth: 2,
-            normalize: true,
-            responsive: true
+            normalize: true
         });
+        const wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
 
-        function switchTab(tabName) {
+        function switchTab(t) {
             document.querySelectorAll('.sidebar, .main-content, .notes-panel').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            
+            const target = document.getElementById('tab-' + t);
+            if(target) target.classList.add('active');
             document.querySelectorAll('.nav-item').forEach((el, idx) => {
                 const map = {library: 0, player: 1, notes: 2};
-                el.classList.toggle('active', idx === map[tabName]);
+                el.classList.toggle('active', idx === map[t]);
             });
-
-            if (tabName === 'player' && activeId) {
-                setTimeout(() => wavesurfer.zoom(0), 100);
-            }
         }
 
-        const req = indexedDB.open("AudioNote_V8", 1);
+        const req = indexedDB.open("AudioNote_Global_v2", 1);
         req.onupgradeneeded = (e) => e.target.result.createObjectStore("files", { keyPath: "id", autoIncrement: true });
         req.onsuccess = (e) => { db = e.target.result; loadLibrary(); };
 
         function loadLibrary() {
             const list = document.getElementById('file-list');
             list.innerHTML = '';
-            let hasFiles = false;
-
             const tx = db.transaction("files", "readonly").objectStore("files");
             tx.openCursor(null, 'prev').onsuccess = (e) => {
                 const cursor = e.target.result;
                 if (cursor) {
-                    hasFiles = true;
                     const div = document.createElement('div');
-                    div.className = `file-item ${activeId === cursor.value.id ? 'active' : ''}`;
-                    div.innerHTML = `
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${cursor.value.name}</span> 
-                        <span onclick="delFile(event, ${cursor.value.id})" style="color:#ef4444; font-weight: bold; padding: 5px;">✕</span>`;
-                    div.onclick = () => openFile(cursor.value.id);
+                    const cid = cursor.value.id;
+                    div.className = `file-item ${activeId === cid ? 'active' : ''}`;
+                    div.innerHTML = `<span style="pointer-events:none">${cursor.value.name}</span><span onclick="delFile(event, ${cid})" style="color:#ef4444; font-weight:bold; padding:5px">✕</span>`;
+                    div.onclick = () => openFile(cid);
                     list.appendChild(div);
                     cursor.continue();
-                } else if (!hasFiles) {
-                    list.innerHTML = `<div class="empty-sidebar">No audio files yet.<br>Click the button above to start.</div>`;
                 }
             };
         }
 
         async function openFile(id) {
-            activeId = id;
-            document.getElementById('loader').style.display = 'flex';
+            const numericId = Number(id);
+            activeId = numericId;
             
-            db.transaction("files", "readonly").objectStore("files").get(id).onsuccess = async (e) => {
-                const f = e.target.result;
+            // Sync UI highlighting immediately
+            loadLibrary(); 
+            
+            const loader = document.getElementById('loader');
+            loader.style.display = 'flex';
+
+            const tx = db.transaction("files", "readonly");
+            tx.objectStore("files").get(numericId).onsuccess = async (ev) => {
+                const f = ev.target.result;
+                if (!f) { loader.style.display = 'none'; return; }
+
                 document.getElementById('file-title').innerText = f.name;
                 document.getElementById('empty-state').style.display = 'none';
                 document.getElementById('player-ui').style.display = 'flex';
                 
-                switchTab('player');
-
+                wavesurfer.pause();
+                wsRegions.clearRegions();
                 if (currentUrl) URL.revokeObjectURL(currentUrl);
                 currentUrl = URL.createObjectURL(f.data);
 
                 try {
                     await wavesurfer.load(currentUrl);
                     renderNotes(f.notes);
+                    switchTab('player');
                 } catch (err) {
-                    alert("Error loading audio.");
+                    console.error("Audio Load Error:", err);
                 } finally {
-                    document.getElementById('loader').style.display = 'none';
-                    loadLibrary();
+                    loader.style.display = 'none';
                 }
             };
         }
 
         document.getElementById('audio-upload').onchange = (e) => {
+            if (isUploading) return;
             const file = e.target.files[0];
             if (!file) return;
+
+            isUploading = true;
             const tx = db.transaction("files", "readwrite");
-            tx.objectStore("files").add({ name: file.name, data: file, notes: [] }).onsuccess = (ev) => {
-                loadLibrary();
-                openFile(ev.target.result);
+            const store = tx.objectStore("files");
+            
+            const addReq = store.add({ name: file.name, data: file, notes: [] });
+            
+            addReq.onsuccess = (ev) => {
+                isUploading = false;
+                e.target.value = ''; // Reset input
+                openFile(ev.target.result); // openFile calls loadLibrary internally
             };
+            addReq.onerror = () => { isUploading = false; };
         };
 
         function renderNotes(notes) {
             const container = document.getElementById('notes-display');
             container.innerHTML = '';
-            notes.sort((a,b) => a.time - b.time).forEach(n => {
+            wsRegions.clearRegions();
+            if (!notes) return;
+
+            [...notes].sort((a,b) => a.time - b.time).forEach((n, i) => {
+                const color = colorPalette[i % colorPalette.length];
                 const d = document.createElement('div');
                 d.className = 'note-card';
+                d.style.borderLeftColor = color;
                 d.innerHTML = `
-                    <span style="color:#ef4444; position:absolute; top:12px; right:12px; cursor:pointer; font-weight:bold; padding: 5px;" onclick="delNote(${n.id})">✕</span>
-                    <span class="note-time" onclick="wavesurfer.setTime(${n.time}); switchTab('player');">${formatTime(n.time)}</span>
-                    <div style="font-size:14px; line-height:1.4; padding-right: 20px;">${n.text}</div>`;
+                    <span class="note-time" style="color:${color}" onclick="wavesurfer.setTime(${n.time}); switchTab('player')">${formatTime(n.time)}</span>
+                    <div style="font-size:14px; line-height:1.4; padding-right:20px;">${n.text}</div>
+                    <span onclick="delNote(${n.id})" style="position:absolute; top:12px; right:12px; cursor:pointer; font-weight:bold; opacity:0.5;">✕</span>`;
                 container.appendChild(d);
+                wsRegions.addRegion({ start: n.time, color: color, drag: false, resize: false });
             });
             container.scrollTop = container.scrollHeight;
         }
@@ -290,14 +262,20 @@
         function addNote() {
             const input = document.getElementById('note-input');
             const text = input.value.trim();
-            if (!text || !activeId) return;
+            if (!text || activeId === null) return;
+            
             const time = wavesurfer.getCurrentTime();
             const tx = db.transaction("files", "readwrite");
             const store = tx.objectStore("files");
+            
             store.get(activeId).onsuccess = (e) => {
                 const f = e.target.result;
+                if(!f) return;
+                if(!f.notes) f.notes = [];
                 f.notes.push({ id: Date.now(), time, text });
-                store.put(f).onsuccess = () => {
+                
+                const putReq = store.put(f);
+                putReq.onsuccess = () => {
                     input.value = '';
                     renderNotes(f.notes);
                 };
@@ -306,48 +284,37 @@
 
         document.getElementById('btn-add').onclick = addNote;
         document.getElementById('note-input').onkeydown = (e) => { if (e.key === 'Enter') addNote(); };
+        document.getElementById('volume-slider').oninput = (e) => wavesurfer.setVolume(e.target.value);
+        document.getElementById('btn-play').onclick = () => wavesurfer.playPause();
 
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
-                e.preventDefault();
-                wavesurfer.playPause();
-            }
-        });
-
-        window.delNote = (noteId) => {
+        window.delNote = (nid) => {
+            if (!activeId) return;
             const tx = db.transaction("files", "readwrite").objectStore("files");
             tx.get(activeId).onsuccess = (e) => {
                 const f = e.target.result;
-                f.notes = f.notes.filter(n => n.id !== noteId);
+                f.notes = f.notes.filter(n => n.id !== nid);
                 tx.put(f).onsuccess = () => renderNotes(f.notes);
             };
         };
 
         window.delFile = (e, id) => {
             e.stopPropagation();
-            if(confirm("Delete project?")) {
-                db.transaction("files", "readwrite").objectStore("files").delete(id).onsuccess = () => {
-                    if (activeId === id) location.reload();
+            if (confirm("Delete this project?")) {
+                const numericId = Number(id);
+                db.transaction("files", "readwrite").objectStore("files").delete(numericId).onsuccess = () => {
+                    if (activeId === numericId) location.reload();
                     else loadLibrary();
                 };
             }
         };
 
-        function exportNotes() {
-            db.transaction("files", "readonly").objectStore("files").get(activeId).onsuccess = (e) => {
-                const f = e.target.result;
-                const text = f.notes.sort((a,b) => a.time - b.time).map(n => `[${formatTime(n.time)}] ${n.text}`).join('\n');
-                const blob = new Blob([text], { type: 'text/plain' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.name}_notes.txt`; a.click();
-            };
-        }
-
-        document.getElementById('btn-play').onclick = () => wavesurfer.playPause();
         wavesurfer.on('play', () => document.getElementById('btn-play').innerText = '⏸');
         wavesurfer.on('pause', () => document.getElementById('btn-play').innerText = '▶');
         wavesurfer.on('timeupdate', (t) => {
-            const dur = wavesurfer.getDuration() || 0;
-            document.getElementById('timer').innerText = `${formatTime(t)} / ${formatTime(dur)}`;
+            document.getElementById('timer').innerText = `${formatTime(t)} / ${formatTime(wavesurfer.getDuration())}`;
+        });
+        wsRegions.on('region-clicked', (r) => {
+            wavesurfer.setTime(r.start);
         });
     </script>
 </body>
